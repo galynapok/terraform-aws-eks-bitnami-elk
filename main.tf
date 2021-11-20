@@ -3,14 +3,16 @@ resource "null_resource" "helm_dirs" {
     command = "mkdir -p ${var.helm_release_values_dir}"
   }
 }
+#########################################################################
+# Install ingress controller
+# cert-manager is needed when ClusterIssuer is installed
+#########################################################################
 
 resource "kubectl_manifest" "cert-manager" {
-  provider = kubectl
   count = var.enable_ssl && var.kibana_enabled == true ? 1 : 0
   yaml_body = file("${path.module}/helm_charts/ingress/cert-manager.yaml")
   override_namespace = var.ingress_helm_release_ns
 }
-
 
 module "ingress" {
   count                   = var.enable_ssl && var.kibana_enabled == true ? 1 : 0
@@ -40,11 +42,16 @@ data "aws_elb" "ingress" {
   name = split("-", data.kubernetes_service.ingress[0].status.0.load_balancer.0.ingress.0.hostname)[0]
 }
 
+#########################################################################
+# Install elasticsearch stach
+# Can be installed with Kibana subchart 
+#########################################################################
 
-resource "helm_release" "elk" {
+resource "helm_release" "elasticsearch" {
   depends_on = [
     module.ingress
   ]
+  count            = module.this.enabled == true ? 1 : 0
   name             = var.helm_release_name
   repository       = var.helm_release_repository
   chart            = var.helm_release_chart
@@ -52,7 +59,6 @@ resource "helm_release" "elk" {
   namespace        = var.helm_release_namespace
   create_namespace = var.helm_release_create_namespace
   wait             = var.helm_release_wait
-
   values = [try(file(var.helm_values_file), "")]
   set {
     name  = "master.replicas"
@@ -101,7 +107,11 @@ resource "helm_release" "elk" {
   set {
     name = "kibana.ingress.hostname"
     value = regex("\\w+\\.\\w+\\.\\w+", format("%s.%s", var.aws_route53_record_name, var.aws_route53_zone_name)) 
-  }  
+  } 
+  set {
+    name = "kibana.service.type"
+    value = var.kibana_service_type
+  } 
   set {
     name = "kibana.ingress.annotations.kubernetes\\.io\\/ingress\\.class"
     value = var.ingress_class
@@ -109,27 +119,48 @@ resource "helm_release" "elk" {
   set {
     name = "kibana.ingress.annotations.cert-manager\\.io\\/cluster-issuer"
     value = format("%s-letsencrypt", var.ingress_helm_release_name)
-  }
+  }  
 
 }
 
+data "kubernetes_service" "elasticsearch-kibana" {
+  count = (var.kibana_service_type == "LoadBalancer") == true ? 1 : 0
+  depends_on = [
+    helm_release.elasticsearch 
+  ]
+  metadata {
+    name      = "elasticsearch-kibana"
+    namespace = var.helm_release_namespace
+  }
+}
+
+
+data "aws_elb" "elasticsearch-kibana" {
+  count = (var.kibana_service_type == "LoadBalancer") == true ? 1 : 0
+  depends_on = [
+    data.kubernetes_service.elasticsearch-kibana
+  ]
+  name = split("-", data.kubernetes_service.elasticsearch-kibana[0].status.0.load_balancer.0.ingress.0.hostname)[0]
+}
+
+
 #########################################################################
-# helm_release_values_service_type == ClusterIP and var.enable_ssl = true
+#  var.enable_ssl = true
 #########################################################################
 
 
-data "aws_route53_zone" "elk" {
-  count = var.enable_ssl == true ? 1 : 0
+data "aws_route53_zone" "elasticsearch" {
+  count = var.enable_ssl && var.kibana_enabled == true ? 1 : 0
   name  = var.aws_route53_zone_name
 }
 
-resource "aws_route53_record" "elk" {
-  count = var.enable_ssl ? 1 : 0
+resource "aws_route53_record" "elasticsearch" {
+  count = var.enable_ssl && var.kibana_enabled == true ? 1 : 0
   depends_on = [
     module.ingress,
-    helm_release.elk,
+    helm_release.elasticsearch,
   ]
-  zone_id = data.aws_route53_zone.elk[0].zone_id
+  zone_id = data.aws_route53_zone.elasticsearch[0].zone_id
   name    = var.aws_route53_record_name
   type    = "A"
   alias {

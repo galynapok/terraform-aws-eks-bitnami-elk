@@ -167,3 +167,8 @@ variable "ingress_helm_release_ns" {
   type = string 
   default = "default"
 }
+
+variable "kibana_service_type" {
+  type = string
+  default = "ClusterIP"
+}
