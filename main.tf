@@ -12,8 +12,8 @@ resource "null_resource" "helm_dirs" {
 #########################################################################
 
 resource "kubectl_manifest" "cert-manager" {
-  local.ingress_enabled
-  yaml_body = file("${path.module}/helm_charts/ingress/cert-manager.yaml")
+  count              = local.ingress_enabled
+  yaml_body          = file("${path.module}/helm_charts/ingress/cert-manager.yaml")
   override_namespace = var.ingress_namespace
 }
 
