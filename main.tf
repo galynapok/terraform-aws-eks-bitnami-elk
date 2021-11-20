@@ -1,3 +1,6 @@
+locals {
+  ingress_enabled = var.enable_ssl && var.install_ingress && var.kibana_enabled == true  ? 1 : 0
+}
 resource "null_resource" "helm_dirs" {
   provisioner "local-exec" {
     command = "mkdir -p ${var.helm_release_values_dir}"
@@ -11,17 +14,17 @@ resource "null_resource" "helm_dirs" {
 resource "kubectl_manifest" "cert-manager" {
   count = var.enable_ssl && var.kibana_enabled == true ? 1 : 0
   yaml_body = file("${path.module}/helm_charts/ingress/cert-manager.yaml")
-  override_namespace = var.ingress_helm_release_ns
+  override_namespace = var.ingress_namespace
 }
 
 module "ingress" {
-  count                   = var.enable_ssl && var.kibana_enabled == true ? 1 : 0
+  count                   = local.ingress_enabled
   source                  = "dabble-of-devops-bioanalyze/eks-bitnami-nginx-ingress/aws"
   version                 = ">= 0.1.0"
   letsencrypt_email       = var.letsencrypt_email
   helm_release_values_dir = var.helm_release_values_dir
   helm_release_name       = var.ingress_helm_release_name
-  helm_release_namespace  = var.ingress_helm_release_ns
+  helm_release_namespace  = var.ingress_namespace
 }
 
 data "kubernetes_service" "ingress" {

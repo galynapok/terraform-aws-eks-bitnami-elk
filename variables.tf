@@ -163,7 +163,7 @@ variable "ingress_class" {
   default = "nginx"
 }
 
-variable "ingress_helm_release_ns" {
+variable "ingress_namespace" {
   type = string 
   default = "default"
 }
@@ -171,4 +171,9 @@ variable "ingress_helm_release_ns" {
 variable "kibana_service_type" {
   type = string
   default = "ClusterIP"
+}
+
+variable "install_ingress" {
+  type = bool
+  default = true
 }
