@@ -12,7 +12,7 @@ resource "null_resource" "helm_dirs" {
 #########################################################################
 
 resource "kubectl_manifest" "cert-manager" {
-  count = var.enable_ssl && var.kibana_enabled == true ? 1 : 0
+  local.ingress_enabled
   yaml_body = file("${path.module}/helm_charts/ingress/cert-manager.yaml")
   override_namespace = var.ingress_namespace
 }
