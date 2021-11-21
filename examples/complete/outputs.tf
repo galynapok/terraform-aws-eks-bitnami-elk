@@ -1,4 +1,4 @@
 output "kibana_lb" {
   description = "Load balancer for kibana"
-  value       = module.example.kibana_lb
+  value       = module.elasticsearch.kibana_lb
 }
