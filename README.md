@@ -37,6 +37,28 @@
 | [kubernetes_service.elasticsearch-kibana](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/data-sources/service) | data source |
 | [kubernetes_service.ingress](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/data-sources/service) | data source |
 
+## usage: |-
+  For a complete example, see [examples/complete](examples/complete).
+  For automated tests of the complete example using [bats](https://github.com/bats-core/bats-core) and [Terratest](https://github.com/gruntwork-io/terratest)
+  (which tests and deploys the example on AWS), see [test](test).
+  ```hcl
+        module "elasticsearch" {
+        source = "../.."       
+        persistence_enabled = false
+        data_replicas = 1
+        master_replicas = 1
+        coordinating_replicas = 1
+        kibana_service_type = "LoadBalancer"
+        enable_ssl    = false
+        } 
+```      
+## Example usage
+examples: |-
+  Here is an example of using this module:
+  - [`examples/complete`](https://github.com/dabble-of-devops-biodeploy/terraform-aws-eks-bitnami-elk/) 
+  - complete example of using this module
+
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
